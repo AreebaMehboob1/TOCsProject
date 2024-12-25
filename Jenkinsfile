@@ -2,33 +2,31 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
+        stage('Deploy HTML') {
             steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: [],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/AreebaMehboob1/TOCsProject.git'
-]]
-                ])
+                sshagent(['github-key']) {
+                    script {
+                        echo 'Deploying index.html to remote Apache server...'
+
+                        // Automatically add the server's SSH key to known_hosts
+                        sh '''
+                        mkdir -p ~/.ssh
+                        ssh-keyscan -H ip-172-31-31-17 >> ~/.ssh/known_hosts
+                        chmod 644 ~/.ssh/known_hosts
+                        '''
+
+                        // Copy the file to the remote server
+                        sh 'scp index.html ubuntu@ip-172-31-31-17:/var/www/html/'
+                    }
+                }
             }
         }
 
-        stage('Build') {
+        stage('Verify Deployment') {
             steps {
-                echo 'Building project...'
-                // No build step required for HTML/CSS/JS
-            }
-        }
-        
-        stage('Deploy') {
-            steps {
-                sshagent(['ubuntu']) {
-                    sh '''
-                    # Transfer files to the Apache2 server
-                    scp -o StrictHostKeyChecking=no -r * ubuntu@51.20.82.247:/var/www/html/
-                    '''
+                script {
+                    echo 'Verifying index.html deployment on remote server...'
+                    sh 'curl http://ip-172-31-31-17/index.html'
                 }
             }
         }
@@ -36,10 +34,10 @@ pipeline {
 
     post {
         success {
-            echo 'Deployment successful!'
+            echo 'Deployment completed successfully!'
         }
         failure {
-            echo 'Deployment failed!'
+            echo 'Deployment failed. Check the logs for more details.'
         }
     }
 }
