@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Deploy HTML') {
             steps {
-                sshagent(['github-key']) {
+                sshagent(['apache']) {
                     script {
                         echo 'Deploying index.html to remote Apache server...'
 
